@@ -10,11 +10,13 @@ This project is a small SQLite-based database manager for storing information ab
 - links projects with skills
 - gets project information, statuses, and skills
 - updates or deletes saved project data
+- includes a populated `projects.db` file with saved project entries
 
 ## Project Files
 
 - `logic.py` contains the `DB_Manager` class and database operations
 - `config.py` stores the database file name
+- `projects.db` contains the current saved project data
 
 ## How to Run
 
@@ -25,3 +27,8 @@ python logic.py
 ```
 
 The database file is created according to the `DATABASE` value in `config.py`.
+
+## Notes
+
+The repository keeps `projects.db` under version control so the current project information is included in GitHub.
+The separate `test_projects.db` file is not tracked.
