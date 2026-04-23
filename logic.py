@@ -40,9 +40,13 @@ class DB_Manager:
                 """CREATE TABLE IF NOT EXISTS projects (
                             project_id INTEGER PRIMARY KEY,
                             user_id INTEGER,
+ 
+ 
+ 
                             project_name TEXT NOT NULL,
                             description TEXT,
                             url TEXT,
+                            photo TEXT,
                             status_id INTEGER,
                             FOREIGN KEY(status_id) REFERENCES status(status_id)
                         )"""
@@ -80,6 +84,16 @@ class DB_Manager:
         sql = "INSERT OR IGNORE INTO status (status_name) values(?)"
         data = statuses
         self.__executemany(sql, data)
+
+    def add_photo_column(self):
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cur = conn.cursor()
+            cur.execute("PRAGMA table_info(projects)")
+            columns = [column[1] for column in cur.fetchall()]
+            if "photo" not in columns:
+                cur.execute("ALTER TABLE projects ADD COLUMN photo TEXT")
+                conn.commit()
 
     def insert_project(self, data):
         sql = """
@@ -134,7 +148,7 @@ WHERE project_name = ?""",
 
     def get_project_info(self, user_id, project_name):
         sql = """
-SELECT project_name, description, url, status_name FROM projects
+SELECT project_name, description, url, photo, status_name FROM projects
 JOIN status ON
 status.status_id = projects.status_id
 WHERE project_name = ? AND user_id = ?
@@ -142,7 +156,7 @@ WHERE project_name = ? AND user_id = ?
         return self.__select_data(sql=sql, data=(project_name, user_id))
 
     def update_projects(self, param, data):
-        allowed_params = {"project_name", "description", "url", "status_id"}
+        allowed_params = {"project_name", "description", "url", "photo", "status_id"}
         if param not in allowed_params:
             raise ValueError("Invalid column name for update")
         sql = f"UPDATE projects SET {param} = ? WHERE user_id = ? AND project_id = ?"
@@ -160,4 +174,5 @@ WHERE project_name = ? AND user_id = ?
 if __name__ == "__main__":
     manager = DB_Manager(DATABASE)
     manager.create_tables()
+    manager.add_photo_column()
     manager.default_insert()
