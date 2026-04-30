@@ -1,5 +1,7 @@
 import sqlite3
+
 from config import DATABASE
+
 
 skills = [(_,) for _ in (["Python", "SQL", "API", "Telegram"])]
 statuses = [
@@ -40,9 +42,6 @@ class DB_Manager:
                 """CREATE TABLE IF NOT EXISTS projects (
                             project_id INTEGER PRIMARY KEY,
                             user_id INTEGER,
- 
- 
- 
                             project_name TEXT NOT NULL,
                             description TEXT,
                             url TEXT,
@@ -78,12 +77,18 @@ class DB_Manager:
             return cur.fetchall()
 
     def default_insert(self):
-        sql = "INSERT OR IGNORE INTO skills (skill_name) values(?)"
-        data = skills
-        self.__executemany(sql, data)
-        sql = "INSERT OR IGNORE INTO status (status_name) values(?)"
-        data = statuses
-        self.__executemany(sql, data)
+        conn = sqlite3.connect(self.database)
+        with conn:
+            cur = conn.cursor()
+            for skill in skills:
+                cur.execute("SELECT skill_id FROM skills WHERE skill_name = ?", skill)
+                if cur.fetchone() is None:
+                    cur.execute("INSERT INTO skills (skill_name) VALUES(?)", skill)
+            for status in statuses:
+                cur.execute("SELECT status_id FROM status WHERE status_name = ?", status)
+                if cur.fetchone() is None:
+                    cur.execute("INSERT INTO status (status_name) VALUES(?)", status)
+            conn.commit()
 
     def add_photo_column(self):
         conn = sqlite3.connect(self.database)
@@ -112,6 +117,22 @@ class DB_Manager:
         sql = "INSERT OR IGNORE INTO project_skills VALUES(?, ?)"
         self.__executemany(sql, data)
 
+    def insert_status(self, status_name):
+        sql = "INSERT INTO status (status_name) SELECT ? WHERE NOT EXISTS (SELECT 1 FROM status WHERE status_name = ?)"
+        self.__executemany(sql, [(status_name, status_name)])
+
+    def update_status(self, old_status_name, new_status_name):
+        sql = "UPDATE status SET status_name = ? WHERE status_name = ?"
+        self.__executemany(sql, [(new_status_name, old_status_name)])
+
+    def insert_skill_name(self, skill_name):
+        sql = "INSERT INTO skills (skill_name) SELECT ? WHERE NOT EXISTS (SELECT 1 FROM skills WHERE skill_name = ?)"
+        self.__executemany(sql, [(skill_name, skill_name)])
+
+    def update_skill_name(self, old_skill_name, new_skill_name):
+        sql = "UPDATE skills SET skill_name = ? WHERE skill_name = ?"
+        self.__executemany(sql, [(new_skill_name, old_skill_name)])
+
     def get_statuses(self):
         sql = "SELECT status_name FROM status"
         return self.__select_data(sql)
@@ -124,7 +145,7 @@ class DB_Manager:
         return None
 
     def get_projects(self, user_id):
-        sql = "SELECT project_name FROM projects WHERE user_id = ?"
+        sql = "SELECT * FROM projects WHERE user_id = ?"
         return self.__select_data(sql, data=(user_id,))
 
     def get_project_id(self, project_name, user_id):
@@ -159,7 +180,7 @@ WHERE project_name = ? AND user_id = ?
         allowed_params = {"project_name", "description", "url", "photo", "status_id"}
         if param not in allowed_params:
             raise ValueError("Invalid column name for update")
-        sql = f"UPDATE projects SET {param} = ? WHERE user_id = ? AND project_id = ?"
+        sql = f"UPDATE projects SET {param} = ? WHERE project_name = ? AND user_id = ?"
         self.__executemany(sql, [data])
 
     def delete_project(self, user_id, project_id):
